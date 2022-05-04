@@ -1,0 +1,26 @@
+var fs = require('fs')
+
+switch (true) {
+  case (process.argv[2] == 'create'):
+    console.log("creating")
+
+    break;
+  case (process.argv[2] == 'read'):
+    fs.readFile('pets.json', 'utf-8', (error, data) => {
+      if (error) throw error
+      if (process.argv.length <= 3)
+      console.log(JSON.parse(data))
+      else console.log(JSON.parse(data)[+process.argv[3]])
+    })
+    break;
+  case (process.argv[2] == 'update'):
+    console.log("update")
+    break;
+  case (process.argv[2] == 'destroy'):
+    console.log("destroy")
+    break;
+  default:
+    console.log("Usage: node pets.js [read | create | update | destroy]")
+    break;
+ }
+
