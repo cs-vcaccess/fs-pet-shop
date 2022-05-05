@@ -94,3 +94,6 @@ switch (true) {
     break;
 }
 
+iterable.forEach((item) => {
+  console.log
+)
