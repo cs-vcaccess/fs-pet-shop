@@ -4,7 +4,7 @@ const app = express()
 app.use(express.json())
 var output = "nothing"
 
-async function read(index, next){
+async function read(index){
   await new Promise((res, rej) => {
     return fs.readFile('pets.json', 'utf-8', (err, data) => {
       if (err) rej(err)
@@ -17,40 +17,46 @@ async function read(index, next){
     })
 
   })
-  console.log(output)
   return output
 
 }
-function create(age, kind, name){
-  if (!(age && kind && name)) return false
+async function create(obj){
+  if (!obj.age && obj.kind && obj.name) return false
+  if (typeof obj.age != 'number' ||
+      typeof obj.kind != 'string' ||
+      typeof obj.name != 'string') return false
 
-  let obj = {
-    age: age,
-    kind: kind,
-    name: name
-  }
-
-  fs.readFile('pets.json', 'utf-8', (err, data) => {
-    if (err) throw err
-    let parsed = JSON.parse(data)
-    parsed.push(obj)
-    let writer = fs.createWriteStream('pets.json')
-    writer.write(JSON.stringify(parsed))
-    writer.close()
+  await new Promise((res, rej) => {
+    return fs.readFile('pets.json', 'utf-8', (err, data) => {
+      if (err) throw err
+      let parsed = JSON.parse(data)
+      parsed.push(obj)
+      let writer = fs.createWriteStream('pets.json')
+      writer.write(JSON.stringify(parsed))
+      writer.close()
+      return res(true) // still don't quite understand
+    })
   })
-  return true
+  return true // still don't quite understand
 }
-function update(index, age, kind, name){
-  if (!(index && age && kind && name)) return false
-  fs.readFile('pets.json', 'utf-8', (error, data) => {
-    if (error) throw error
-    obj = JSON.parse(data)
-    obj[index].age = age
-    obj[index].kind = kind
-    obj[index].name = name
-    let writer = fs.createWriteStream('pets.json')
-    writer.write(JSON.stringify(obj))
-    writer.close()
+async function update(input, index){
+  if (!input.age && input.kind && input.name) return false
+  if (typeof input.age != 'number' ||
+      typeof input.kind != 'string' ||
+      typeof input.name != 'string') return false
+
+  await new Promise((res, rej) => {
+    return fs.readFile('pets.json', 'utf-8', (error, data) => {
+      if (error) throw error
+      obj = JSON.parse(data)
+      obj[index].age = input.age
+      obj[index].kind = input.kind
+      obj[index].name = input.name
+      let writer = fs.createWriteStream('pets.json')
+      writer.write(JSON.stringify(obj))
+      writer.close()
+      return res(true)
+    })
   })
   return true
 }
@@ -71,49 +77,57 @@ function inputGood(additional) {
   else return true
 }
 
-// READ and DESTROY
-app.get('/:action/:index', async (request, response, next) => {
+// READ ALL
+app.get('/pets', async (request, response) => {
   response.statusCode = 200
-  switch (true) {
-    case request.params.action == 'read':
-      let something = await read(request.params.index)
-      response.send(something)
-      break
-    case request.params.action == 'destroy':
-      if (destroy(request.params.index))
-      response.send(read(undefined))
-      break
-    default:
-      response.statusCode = 500
-      response.send("Invalid command")
-      break
-   }
+  let data = await read()
+  response.send(data)
+})
+// READ ONE
+app.get('/pets/:index', async (request, response) => {
+  response.statusCode = 200
+  let data = await read(request.params.index)
+  response.send(data)
 })
 
 // CREATE
-app.get('/:action/:a/:b/:c',  (request, response) => {
+app.post('/pets',  async (request, response) => {
   response.statusCode = 200
-  if (create(request.params.a, request.params.b, request.params.c))
-  response.send(read(undefined))
+  if (await create(request.body)) {
+    let data = await read()
+    response.send(data)
+  }
   else {
-    response.statusCode = 500
-    response.send("Error, could not create item")
+    response.statusCode = 400
+    response.send("Bad Request")
   }
 })
 
 // UPDATE
-app.get('/:action/:index/:a/:b/:c',  (request, response) => {
+app.patch('/pets/:index', async (request, response) => {
   response.statusCode = 200
-  if (update(request.params.index, request.params.a, request.params.b, request.params.c))
-  response.send(read())
+  if (await update(request.body, request.params.index)) {
+    let data = await read()
+    response.send(data)
+  }
   else {
-    response.statusCode = 500
-    response.send("Error, cannot update item")
+    response.statusCode = 400
+    response.send("Bad Request")
   }
 })
-app.listen(3000, () => console.log("I'm listening"))
 
-// just a proof of concept
-app.post('/something', (req, res) => {
-  res.json(req.body)
+// DELETE
+app.delete('/pets/:index', async (request, response) => {
+
 })
+
+// CRUD MAP
+/*
+CONCEPT | SQL    | HTTP
+
+create  | insert | post
+read    | select | get
+update  | update | put
+delete  | delete | delete
+*/
+app.listen(3000, () => console.log("I'm listening"))
