@@ -1,7 +1,13 @@
 const express = require('express')
 const fs = require('fs')
 const app = express()
+const {Pool} = require('pg')
 app.use(express.json())
+const pool = new Pool({
+  user: 'ratpuppymagic',
+  host: 'localhost',
+  database: 'petshop'
+})
 var output = "nothing"
 
 async function read(index){
@@ -131,3 +137,11 @@ update  | update | put
 delete  | delete | delete
 */
 app.listen(3000, () => console.log("I'm listening"))
+
+// lets see if pg works
+app.get('/pg', (request, response) => {
+  pool.query('SELECT * FROM pets', (err, data) => {
+    if (err) throw err
+    response.json(data.rows)
+  })
+})
